@@ -4,6 +4,7 @@
 // serde = { version = "1.0", features = ["derive"] }
 // bincode = "1.3"
 
+use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fs::File;
 use std::io::{self, Read, Write};
@@ -24,6 +25,7 @@ struct Node<K: Ord + Clone, V: Clone> {
     left: Option<Box<Node<K, V>>>,
     right: Option<Box<Node<K, V>>>,
 }
+
 impl<K: Ord + Clone + Serialize + DeserializeOwned, V: Clone + Serialize + DeserializeOwned> TreeMap<K, V> {
     pub fn new() -> Self { TreeMap { root: None } }
 
@@ -45,10 +47,20 @@ impl<K: Ord + Clone + Serialize + DeserializeOwned, V: Clone + Serialize + Deser
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<V> { Self::get_node(&self.root, key) }
-    fn get_node(node: &Option<Box<Node<K, V>>>, key: &K) -> Option<V> {
+    pub fn get<Q>(&self, key: &Q) -> Option<V> 
+    where 
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
+    { 
+        Self::get_node(&self.root, key)
+    }
+    fn get_node<Q>(node: &Option<Box<Node<K, V>>>, key: &Q) -> Option<V> 
+    where 
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
         match node {
-            Some(n) => match key.cmp(&n.key) {
+            Some(n) => match key.cmp(n.key.borrow()) {
                 Ordering::Less    => Self::get_node(&n.left, key),
                 Ordering::Greater => Self::get_node(&n.right, key),
                 Ordering::Equal   => Some(n.value.clone()),
@@ -57,10 +69,20 @@ impl<K: Ord + Clone + Serialize + DeserializeOwned, V: Clone + Serialize + Deser
         }
     }
 
-    pub fn remove(&mut self, key: &K) -> Option<V> { Self::remove_node(&mut self.root, key) }
-    fn remove_node(node: &mut Option<Box<Node<K, V>>>, key: &K) -> Option<V> {
+    pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
+    where 
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
+    { 
+        Self::remove_node(&mut self.root, key) 
+    }
+    fn remove_node<Q>(node: &mut Option<Box<Node<K, V>>>, key: &Q) -> Option<V> 
+    where 
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
         if let Some(n) = node {
-            match key.cmp(&n.key) {
+            match key.cmp(n.key.borrow()) {
                 Ordering::Less    => return Self::remove_node(&mut n.left, key),
                 Ordering::Greater => return Self::remove_node(&mut n.right, key),
                 Ordering::Equal   => {
@@ -97,11 +119,15 @@ impl<K: Ord + Clone + Serialize + DeserializeOwned, V: Clone + Serialize + Deser
         node
     }
 
-    pub fn seek_ge(&self, key: &K) -> Option<(K, V)> {
+    pub fn seek_ge<Q>(&self, key: &Q) -> Option<(K, V)>
+    where 
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
         let mut res = None;
         let mut cur = &self.root;
         while let Some(n) = cur {
-            if &n.key < key { cur = &n.right; }
+            if n.key.borrow() < key { cur = &n.right; }
             else { res = Some((n.key.clone(), n.value.clone())); cur = &n.left; }
         }
         res
