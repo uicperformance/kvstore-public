@@ -1,4 +1,3 @@
-
 In this third assignment, we are starting with a solution for hw2, with some minor additional changes, including 
 setting the server to single-threaded by default. We'll return to studying multi-threaded server performance later. 
 
@@ -9,13 +8,97 @@ behavior of the program, and the sources of performance degradation.
 
 Unfortunately, while the hw3 code is much better than the hw2 code, addressing synchronization issues and efficient batch processing, there remains a significant performance problem. 
 
-To see the problem, start the server using only the ``--addr`` and ``--exit-code`` parameters. Then,
-run the benchmark program using the above parameters as well as ``--threads 1``. Then, run the same 
+To see the problem, start the server using only the ``--addr`` and ``--exit-code`` parameters.
+
+Benchmark raw:
+        --- Benchmark Results ---
+        Total Operations: 10000
+        Total Duration:   42.5727 s
+        Avg Operations/s: 234.89
+        Throughput:       0.0002 M req/s
+
+        Executed in   38.59 secs    fish           external
+           usr time    1.04 secs  591.00 micros    1.04 secs  35%
+           sys time    1.89 secs  358.00 micros    1.89 secs  65%
+
+Benchmark 1 thread:
+        --- Benchmark Results ---
+        Total Operations: 1000
+        Total Duration:   1.7980 s
+        Avg Operations/s: 556.16
+        Throughput:       0.0006 M req/s
+
+        Executed in    2.33 secs      fish           external
+           usr time   19.99 millis  474.00 micros   19.52 millis 18%
+           sys time   91.37 millis  284.00 micros   91.09 millis 82%
+
+Benchmark 2 thread:
+        --- Benchmark Results ---
+        Total Operations: 2000
+        Total Duration:   4.0348 s
+        Avg Operations/s: 495.68
+        Throughput:       0.0005 M req/s
+
+        Executed in    4.47 secs      fish           external
+           usr time   68.83 millis  435.00 micros   68.39 millis 23%
+           sys time  229.88 millis  262.00 micros  229.61 millis 77%
+
+
+Benchmark 3 thread:
+        --- Benchmark Results ---
+        Total Operations: 3000
+        Total Duration:   6.8261 s
+        Avg Operations/s: 439.49
+        Throughput:       0.0004 M req/s
+
+        Executed in    7.28 secs      fish           external
+           usr time  198.20 millis  789.00 micros  197.41 millis 35%
+           sys time  369.08 millis    0.00 micros  369.08 millis 65%
+
+
+
+Then, run the benchmark program using the above parameters as well as ``--threads 1``. Then, run the same 
 experiment, but now with ``--threads 2``, and ``--threads 4``. The more client threads we add, the lower the measured performance. 
+
+    % time     seconds  usecs/call     calls    errors syscall
+    ------ ----------- ----------- --------- --------- ------------------
+     74.01   26.790909        5343      5014           close
+     20.54    7.434208        1494      4974           openat
+      3.24    1.171650       55792        21           accept4
+      2.17    0.785436         157      4973           write
+      0.03    0.011302          62       180           recvfrom
+      0.01    0.003610          35       101           sendto
+      0.00    0.000706         705         1           execve
+      0.00    0.000457          14        32           brk
+      0.00    0.000448          29        15           munmap
+      0.00    0.000306          11        26           mmap
+      0.00    0.000198           9        22           setsockopt
+      0.00    0.000180           8        21           fcntl
+      0.00    0.000086          14         6           mprotect
+      0.00    0.000071          14         5           read
+      0.00    0.000048           9         5           rt_sigaction
+      0.00    0.000044          10         4           newfstatat
+      0.00    0.000040           9         4           pread64
+      0.00    0.000027           8         3           sigaltstack
+      0.00    0.000023          11         2         1 arch_prctl
+      0.00    0.000023          22         1           socket
+      0.00    0.000020          10         2           prlimit64
+      0.00    0.000016          15         1         1 access
+      0.00    0.000014          13         1           bind
+      0.00    0.000013          12         1           poll
+      0.00    0.000011          11         1           getrandom
+      0.00    0.000010          10         1           listen
+      0.00    0.000010          10         1           sched_getaffinity
+      0.00    0.000010           9         1           getpid
+      0.00    0.000010           9         1           rseq
+      0.00    0.000009           9         1           set_robust_list
+      0.00    0.000009           9         1           set_tid_address
+    ------ ----------- ----------- --------- --------- ------------------
+    100.00   36.199902        2347     15422         2 total
 
 _Without_ doing a line by line comparison of the source code (including _not_ using git diff and such), use profiling tools to get further clues as to why the server is now so absurdly slow. 
 
-- [ ] Does ``time`` give you any useful clues? Is it spending more time waiting, working in user space, or in the kernel? How does this proportion change with the number of client threads?
+- [x] Does ``time`` give you any useful clues? Is it spending more time waiting, working in user space, or in the kernel? How does this proportion change with the number of client threads?
 - [ ] Based on what ``time`` told you, you'll want to again either use ``perf record`` or ``strace`` to see what we were waiting for. 
 - [ ] Try running the server with ``--dbfile /tmp/$USER.db`` where ``$USER`` is your username. Think of ``/tmp/`` as very fast storage for now. Storing the database there makes server substantially faster, but if you increase to ``--ops 10000``, you'll find that the thread slowdown trend persists even with ``/tmp/`` storage. 
 - [ ] Note: A lesser version of the problem even occurs with ``-m`` (mem-only database), but let's focus on the storage-based version for now. 
