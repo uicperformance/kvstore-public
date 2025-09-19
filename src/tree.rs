@@ -39,7 +39,7 @@ impl<K: Ord + Clone + Serialize + DeserializeOwned, V: Clone + Serialize + Deser
                 Ordering::Equal   => { let old = n.value.clone(); n.value = value; Some(old) }
             },
             None => {
-                *node = Some(Box::new(Node { key, value, left: None, right: None }));
+                *node = Some(Box::new(Node { key: key, value: value, left: None, right: None }));
                 None
             }
         }

@@ -79,6 +79,7 @@ impl Connection {
             self.stream.write_all(req.as_bytes())?;            
         }
         self.stream.write_all("ENDBATCH\r\n".as_bytes())?;
+        self.stream.flush(); 
         
         // Read all responses from the stream
         let mut resp_buf = String::new();

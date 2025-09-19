@@ -5,6 +5,7 @@ use std::net::{TcpListener, TcpStream};
 use std::io::{BufRead, BufReader, Write};
 use std::sync::{Arc, RwLock};
 use kvstore::TreeMap;
+use std::fs::*;
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
@@ -13,19 +14,25 @@ struct Args {
     #[arg(short, long, default_value = "127.0.0.1:4000")]
     addr: String,
     
-    // Do not persist the database contents to disk
+    /// Do not persist the database contents to disk
     #[arg(short, long, default_value = "false")]
     memonly: bool,
 
-    // Run the server single-threaded
+    /// Run the server single-threaded
     #[arg(short, long, default_value_t = true, action = ArgAction::Set)]
     singlethread: bool,
 
-    // Location of the database file
+    /// Location of the database file
     #[arg(short, long, default_value = "kvstore.db")]
     dbfile: String,
 
-    // Pass this code to the server EXIT command to have it exit
+    /// Location of the database transaction log
+    #[arg(short, long, default_value = "kvstore.log")]
+    logfile: String,
+
+
+
+    /// Pass this code to the server EXIT command to have it exit
     #[arg(short, long, default_value = "")]
     exit_code: String,    
 }
@@ -93,22 +100,47 @@ fn handle_client(args: Arc<Args>, stream: TcpStream, map: Arc<RwLock<TreeMap<Str
     }
 }
 
+fn recover_from_log(map: &mut TreeMap<String,String>, log: File) { 
+    let mut lines = BufReader::new(log).lines();
+    println!("Recovering from log...");
+    let mut count = 0;
+    while let Some(Ok(line)) = lines.next() {
+        count+=1;
+        let parts: Vec<&str> = line.trim_end().splitn(3, ' ').collect();
+        match parts[0] {
+        "SET" if parts.len() == 3 => {
+            map.insert(parts[1].to_string(), parts[2].to_string());
+        },
+        "REMOVE" if parts.len() == 2 => {
+            map.remove(&parts[1].to_string());
+        },
+        _ => { panic!("Bad log entry."); }
+        }  
+    }
+    println!("Recovered {count} updates from log.\n");
+
+}
 fn main() -> std::io::Result<()> {
     let args = Arc::new(Args::parse());
     
+    let mut map = match TreeMap::load_from_file(&args.dbfile) {
+        Ok(m) => m,
+        Err(_) => TreeMap::new(),
+    };
+
     {   // Create or open pidfile and write PID to it
         let mut file = std::fs::File::create("server_pid.txt").unwrap();
         writeln!(file, "{}", std::process::id())?;
     }
 
+    if let Ok(true) = std::fs::exists(args.logfile.as_str()) {
+        recover_from_log(&mut map, File::open(args.logfile.as_str()).unwrap());
+    }    
+
+    let map = Arc::new(RwLock::new(map));
+
     let listener = TcpListener::bind(&args.addr)?;
     println!("Server listening on {}",args.addr);
-
-    let map = TreeMap::new(); /*match TreeMap::load_from_file(&args.dbfile) {
-        Ok(m) => m,
-        Err(_) => TreeMap::new(),
-    };*/
-    let map = Arc::new(RwLock::new(map));
 
     for stream in listener.incoming() {
 
