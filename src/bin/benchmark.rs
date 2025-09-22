@@ -6,6 +6,7 @@ use std::str;
 use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
+use hdrhistogram::Histogram;
 
 /// A high-performance benchmarking client for a key-value store.
 #[derive(Parser, Debug, Clone)]
@@ -134,8 +135,11 @@ fn main() {
     }
 
     let mut total_ops = 0;
+    let mut total_histo = Histogram::new(4).unwrap();
     for handle in handles {
-        total_ops += handle.join().expect("Thread panicked");
+        let (ops,histo) = handle.join().expect("Thread panicked");
+        total_ops += ops;
+        total_histo.add(histo);
     }
 
     let duration = start.elapsed();
@@ -149,19 +153,20 @@ fn main() {
     println!("Total Operations: {}", total_ops);
     println!("Total Duration:   {:.4} s", duration.as_secs_f64());
     println!("Avg Operations/s: {:.2}", throughput);
-    println!(
-        "Throughput:       {:.4} M req/s",
+    println!("Throughput:       {:.4} M req/s",
         throughput / 1_000_000.0
     );
+    println!("Mean latency: {} microseconds",total_histo.mean());
+    println!("99% tail latency: {} microseconds",total_histo.value_at_percentile(99.0));
 }
 
 /// Logic for a single client thread.
-fn run_client_thread(args: Arc<Args>) -> usize {
+fn run_client_thread(args: Arc<Args>) -> (usize,Histogram<u64>) {
     let mut rng = rand::thread_rng();
+    let mut histo = Histogram::new(4).unwrap();
     if args.connections == 0 {
-        return 0; // Avoid division by zero if no connections are specified
+        return (0,histo); // Avoid division by zero if no connections are specified
     }
-
     let mut connections: Vec<_> = (0..args.connections)
         .map(|_| Connection::new(&args.addr).expect("Failed to connect"))
         .collect();
@@ -203,6 +208,9 @@ fn run_client_thread(args: Arc<Args>) -> usize {
             requests_batch.push_str(&req);
         }
         requests_batch.push_str("ENDBATCH\r\n");
+
+        
+        let start = std::time::Instant::now();
         let _ = connection.stream.write(requests_batch.as_bytes());
 
         // Read all responses from the stream
@@ -210,6 +218,7 @@ fn run_client_thread(args: Arc<Args>) -> usize {
         for _ in 0..current_batch_size {
             if connection.reader.read_line(&mut resp_buf).unwrap() > 0 {  
                 resp_buf.clear(); // Clear buffer for next read
+                histo.record(start.elapsed().as_micros() as u64);
                 ops_done += 1; 
             }
             else {
@@ -219,7 +228,7 @@ fn run_client_thread(args: Arc<Args>) -> usize {
     }
 
     println!("Thread finished.");
-    ops_done
+    (ops_done,histo)
 }
 
 /// Pre-populates the kvstore with random data.
