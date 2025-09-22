@@ -80,7 +80,7 @@ impl Connection {
             self.stream.write_all(req.as_bytes())?;            
         }
         self.stream.write_all("ENDBATCH\r\n".as_bytes())?;
-        self.stream.flush(); 
+        let _ = self.stream.flush(); 
         
         // Read all responses from the stream
         let mut resp_buf = String::new();
@@ -139,7 +139,7 @@ fn main() {
     for handle in handles {
         let (ops,histo) = handle.join().expect("Thread panicked");
         total_ops += ops;
-        total_histo.add(histo);
+        let _ = total_histo.add(histo);
     }
 
     let duration = start.elapsed();
@@ -153,11 +153,8 @@ fn main() {
     println!("Total Operations: {}", total_ops);
     println!("Total Duration:   {:.4} s", duration.as_secs_f64());
     println!("Avg Operations/s: {:.2}", throughput);
-    println!("Throughput:       {:.4} M req/s",
-        throughput / 1_000_000.0
-    );
-    println!("Mean latency: {} microseconds",total_histo.mean());
-    println!("99% tail latency: {} microseconds",total_histo.value_at_percentile(99.0));
+    println!("Mean latency: {:.0} ms",total_histo.mean()/1000.0);
+    println!("99% tail latency: {:.0} ms",total_histo.value_at_percentile(99.0)/1000);
 }
 
 /// Logic for a single client thread.
@@ -218,7 +215,7 @@ fn run_client_thread(args: Arc<Args>) -> (usize,Histogram<u64>) {
         for _ in 0..current_batch_size {
             if connection.reader.read_line(&mut resp_buf).unwrap() > 0 {  
                 resp_buf.clear(); // Clear buffer for next read
-                histo.record(start.elapsed().as_micros() as u64);
+                let _ = histo.record(start.elapsed().as_micros() as u64);
                 ops_done += 1; 
             }
             else {
