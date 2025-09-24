@@ -1,3 +1,5 @@
+mod bench_saver;
+
 use clap::Parser;
 use rand::{distributions::Alphanumeric, Rng};
 use std::io::{BufRead, BufReader, Write};
@@ -7,6 +9,8 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
 use hdrhistogram::Histogram;
+
+use crate::bench_saver::BenchmarkSaver;
 
 /// A high-performance benchmarking client for a key-value store.
 #[derive(Parser, Debug, Clone)]
@@ -48,14 +52,17 @@ struct Args {
     #[arg(long, default_value_t = 50)]
     rw_ratio: u8,
 
-    // Pass this code to the server EXIT command to have the server exit
+    /// Pass this code to the server EXIT command to have the server exit
     #[arg(short, long, default_value = "")]
     exit_code: String,
 
-    // Delete this file before running benchmark workload. This may be used to synchronize profiling tools.
+    /// Delete this file before running benchmark workload. This may be used to synchronize profiling tools.
     #[arg(short, long, default_value = None)]
     sleeperfile: Option<String>,
 
+    /// Used by grader.sh
+    #[arg(long)]
+    submission_benchmark: bool,
 }
 
 /// Represents a single connection with its buffered reader.
@@ -155,6 +162,11 @@ fn main() {
     println!("Avg Operations/s: {:.2}", throughput);
     println!("Mean latency: {:.0} ms",total_histo.mean()/1000.0);
     println!("99% tail latency: {:.0} ms",total_histo.value_at_percentile(99.0)/1000);
+
+    if args.submission_benchmark {
+        // Save benchmarks for your grade
+        BenchmarkSaver::new().total_ops(total_ops).duration(duration.as_secs_f64()).throughput(throughput).save();
+    }
 }
 
 /// Logic for a single client thread.

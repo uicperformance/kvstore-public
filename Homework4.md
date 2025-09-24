@@ -1,4 +1,3 @@
-
 In this fourth assignment, we are starting with the same code as in hw3, but instead of analyzing what's wrong, we implement some fixes. 
 
 They key problem we observed in hw3 was that the server keeps saving the database every time there is an update. 
@@ -33,6 +32,8 @@ A better solution is to use write-ahead logging until the log exceeds a certain 
 To zero out an open log file, use both Seek::rewind(), and File::set_len(0) together. 
 
 - [ ] Add a snapshot interval command line argument to the server.
+  - This argument **must be** passable as `--snapshot-interval <n>`, for `<n>` some positive integer
+    - If it is *not* passable as such, the autograding script **will fail and give you a 0**
 - [ ] Observe the throughput achieved for snapshot intervals ranging from 10 requests to 10000 requests
 - [ ] Observe the mean and tail latency for snapshot intervals ranging from 10 requests to 10000 requests
 - [ ] What do you notice about the relationship between mean latency and throughput? 

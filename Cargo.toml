@@ -9,6 +9,7 @@ bincode = "1.3"
 clap = { version = "4.0", features = ["derive"] }
 rand = "0.8"
 hdrhistogram = "*"
+sha2 = "0.10.9"
 
 [profile.release]
 debug=2
