@@ -95,7 +95,7 @@ fi
 produced_db_num=25
 if [ -z "$DB_FILE_BYTES_P" ] || [ "$DB_FILE_BYTES_P" -ne 1 ]; then
 	produced_db_num=0
-	produced_db_explain="$(printf "\t${ANSI_BRED}Your server program should write to the db file every snapshot interval${ANSI_RES}")\n"
+	produced_db_explain="$(printf "\t${ANSI_BRED}Your server should create a sizable database file when storing a sizable number of mappings. Make sure you are writing to it.${ANSI_RES}")\n"
 fi
 
 if [ -z "$CHECKSUM_GATE1_PASSED" ] || [ "$CHECKSUM_GATE1_PASSED" -ne 1 ]; then

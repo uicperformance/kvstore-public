@@ -34,8 +34,9 @@ To zero out an open log file, use both Seek::rewind(), and File::set_len(0) toge
 - [ ] Add a snapshot interval command line argument to the server.
   - This argument **must be** passable as `--snapshot-interval <n>`, for `<n>` some positive integer
     - If it is *not* passable as such, the autograding script **will fail and give you a 0**
-- [ ] Observe the throughput achieved for snapshot intervals ranging from 10 requests to 10000 requests
-- [ ] Observe the mean and tail latency for snapshot intervals ranging from 10 requests to 10000 requests
+  - The integer `<n>` passed as `--snapshot-interval <n>` should count how many batches need to be processed before flushing the database to disk, *not* how many requests
+- [ ] Observe the throughput achieved for snapshot intervals ranging from 10 requests to 10000
+- [ ] Observe the mean and tail latency for snapshot intervals ranging from 10 requests to 10000
 - [ ] What do you notice about the relationship between mean latency and throughput? 
 - [ ] Is there a similar relationship between tail latency and throughput?
 - [ ] Measure mean/tail latency over batch size. 
