@@ -15,6 +15,9 @@ trap 'early_exit' EXIT
 
 echo -e "\033[0;32mPlease wait patiently while the autograder runs. It may take some time and not print anything.\033[0m"
 
+cargo b -r --bin server > /dev/null 2>&1
+cargo b -r --bin benchmark > /dev/null 2>&1
+
 SERVER_PORT=$(comm -23 <(seq 1024 65535 | sort) <(ss -Htan | awk '{print $4}' | sed 's/.*://;s/\[.*\]://' | sort -u) | shuf -n 1)
 
 cd "$SCRIPT_DIR" >/dev/null
@@ -24,12 +27,12 @@ SERVER_PID=$!
 
 sleep 0.5
 
-if ! timeout --signal=KILL --kill-after=0s 1m cargo r -r --bin benchmark -- --rw-ratio 100 -a "127.0.0.1:$SERVER_PORT" -e "$EXIT_CODE" --submission-benchmark --threads 1 --connections 1 --ops 5000000 --batch-size 1000 --prepopulate 10000 --key-range 1000 --value-size 128 > /dev/null 2>&1; then
+if ! timeout --signal=KILL --kill-after=0s 10s cargo r -r --bin benchmark -- --rw-ratio 100 -a "127.0.0.1:$SERVER_PORT" -e "$EXIT_CODE" --submission-benchmark --threads 1 --connections 1 --ops 5000000 --batch-size 1000 --prepopulate 10000 --key-range 1000 --value-size 128 > /dev/null 2>&1; then
 	set +e
 	trap - EXIT
 
 	kill -9 $SERVER_PID
-	echo -e "${ANSI_BRED}ERROR${ANSI_RES}: Assigned zero score because the benchmark program did not complete within the allowed time of one minute."
+	echo -e "${ANSI_BRED}ERROR${ANSI_RES}: Assigned zero score because the benchmark program did not complete within the allowed time of 10 seconds."
 	echo "Total Score: 0%"
 	exit 1
 fi
