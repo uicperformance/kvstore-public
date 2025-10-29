@@ -36,7 +36,7 @@ You'll find that the throughput for both versions drops by about half. Judging b
 
 - The default benchmark setting is 5 million operations. How many L2 cache misses are the two versions incurring per operation? 
 - Given the operation of a BTree and a binary tree, and the reported depths of the trees, how do you account for all these misses?
-- Use perf record -e l2.miss to profile the servers based on L2 misses. This tells you where in the program the L2 misses occur. How do the two versions differ in this regard?
+- Use perf record -e l2_rqsts.miss to profile the servers based on L2 misses. This tells you where in the program the L2 misses occur. How do the two versions differ in this regard?
 
 ## Dig deeper with stall cycles
 
